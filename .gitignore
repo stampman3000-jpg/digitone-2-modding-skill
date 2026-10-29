@@ -9,3 +9,7 @@ build_simc/
 *.snap
 *.snap.gz
 *.dis
+# Local sine / FRQ tables generated from a Monomachine (never commit)
+*.fm2t
+fm-tables.json
+external-tables/
