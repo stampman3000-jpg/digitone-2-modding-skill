@@ -9,3 +9,10 @@ build_simc/
 *.snap
 *.snap.gz
 *.dis
+# SuperWave waveform tables generated from a local Monomachine OS.
+# The engines ship from-scratch defaults in code. These files are the
+# optional build-time swap (SWAVE_WAVE_TABLE / --wave-table) and must
+# not be committed.
+*.swave.json
+*.swave.f32
+engines/local/
