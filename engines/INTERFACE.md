@@ -1,9 +1,10 @@
 # Slotting an engine in
 
 FM+DYNAMIC and FM+PARALLELL are new Digitone II machines. They do not replace
-FM TONE, WAVETONE, FM DRUM, SWARMER, or MIDI. A later FM+STATIC and a super-wave
-engine should use the same shape: its own machine id, its own 8 SYN knobs, its
-own state, and the same hook.
+FM TONE, WAVETONE, FM DRUM, SWARMER, or MIDI, and they do not replace the
+FM+STATIC machine that is already shipped as type 5. A super-wave engine
+should use the same shape: its own machine id from 8 upward, its own 8 SYN
+knobs, its own state, and the same hook.
 
 This repo does not contain Elektron firmware. Addresses below are the ones
 recorded in `skills/digitone-2-modding-skill/references/sharc.md` and
@@ -24,21 +25,23 @@ appendix A pages A-6 and A-7.
 | 2 | FM DRUM | stock |
 | 3 | SWARMER | stock |
 | 4 | MIDI | stock (no oscillator loop) |
-| 5 | FM+DYNAMIC | `engines/fm_dynamic` |
-| 6 | FM+PARALLELL | `engines/fm_parallel` |
-| 7 | FM+STATIC | reserved, not built here |
-| 8 | super-wave | reserved |
+| 5 | FM+STATIC | shipped custom firmware, not this repo. Hook passes through |
+| 6 | FM+DYNAMIC | `engines/fm_dynamic` |
+| 7 | FM+PARALLELL | `engines/fm_parallel` |
+| 8+ | super-wave | reserved, pass through |
 
-`engines/hook.py` `decide` is the rule, and it is tested: ids 0–4, 7, 8, and
-anything else pass through untouched. Only 5 and 6 are ours.
+`engines/hook.py` `decide` is the rule, and it is tested: ids 0–5, 8 and above,
+and anything else pass through untouched. Only 6 and 7 are ours. Do not widen
+that into "anything ≥ 5", or the shipped static machine (and later a
+super-wave) would skip the stock loops and play nothing.
 
 On the ColdFire side the stock code only accepts ids 0–4 (`machine + 1 < 6` at
 `0x400dd2ae`, `type <= 4` accessors, machine list `{0,2,1,3,4}` at
 `0x401ddd58`). Extending that bound and appending descriptors is what adds a
 machine. Overwriting an entry in that list, or reusing ids 0–4, is not.
 
-The SYN page is the normal eight encoders. When the selected machine is 5 or
-6 the page shows that machine's names (see each engine README). FM TONE's
+The SYN page is the normal eight encoders. When the selected machine is 6 or
+7 the page shows that machine's names (see each engine README). FM TONE's
 handlers stay on FM TONE. New parameter-table records are appended
 (`coldfire.md`, `paramtable.relocate`), not written over the stock ones.
 
@@ -54,9 +57,10 @@ Hook that one instruction with a CALL. The routine:
 
 1. Saves R0–R15, I0–I4, and M4 (the same save the track-trim example uses).
 2. Reads the machine id. It does not change it.
-3. If the id is not 5 or 6, restores registers and **replays the original
-   jump**, so stock dispatch is unchanged. Return.
-4. If the id is 5 or 6:
+3. If the id is not 6 or 7, restores registers and **replays the original
+   jump**, so stock dispatch is unchanged. Return. Type 5 (shipped
+   FM+STATIC) takes this path.
+4. If the id is 6 or 7:
    - point R4 at **our** state, `0x20098000 + voice*512`, not the stock engine
      state at `0x2495e0`;
    - point R12 at the voice buffer the stock render already uses
@@ -68,8 +72,9 @@ Hook that one instruction with a CALL. The routine:
 
 The 4 is the value those loops already treat as "no stock oscillator" (MIDI
 uses it too). We write it only after our render, and only on a voice whose
-machine id is already 5 or 6. A SWARMER voice, a WAVETONE voice, and a MIDI
-voice never take this branch, and the dispatch table itself is not edited.
+machine id is already 6 or 7. A SWARMER voice, a WAVETONE voice, a MIDI
+voice, and the shipped FM+STATIC voice never take this branch, and the
+dispatch table itself is not edited.
 
 `hook.build_addrs` computes the three addresses with shifts (564 = 2⁹+2⁵+2⁴+2²,
 state stride 512, buffer stride 128). It matches `fm_common.engine_word_addr`,
@@ -117,6 +122,14 @@ filter at their own scale (SWARMER is huge; the pre-filter bus is nearer
 ±0.1). Gain is the one number to set by ear when the hook is wired, against
 a stock FM TONE note at the same amp settings. It is not a ninth SYN knob.
 
+## Standalone FM+PAR state
+
+The C engine in `engines/fm_parallel/fm_par.c` is the reference DSP for type
+7. Its voice is **52 bytes** (16 voices = 832 bytes), laid out in `fm_par.h`.
+Curves are one table per knob in `fm_par_curves.h`, placeholders to fit by
+ear. It uses `sinf`, not the sine table below, and it does not load a ratio
+file. The 512-byte slot above is the assembler kernel's working memory.
+
 ## Sine and listed-ratio tables
 
 Built-in defaults live in `fm_common.py` (a 2048-point sine, and 128 listed
@@ -134,7 +147,9 @@ python3 engines/fm_dynamic/reference.py --tables /path/to/mine.json
 
 If `--tables` is omitted, `DN2_FM_TABLES` is used. If that is unset, the
 built-ins are used. FM+DYNAMIC's 1FRQ and 2FRQ are continuous laws, not this
-list. FM+PARALLELL (and a future FM+STATIC) index it with the FRQ knobs.
+list. The SHARC FM+PARALLELL sketch can index it. The standalone FM+PAR
+engine does not: its 24 musical steps live in `fm_par_curves.h`. FM+STATIC
+is type 5, already shipped, and is not built here.
 
 Do not commit the file. `.gitignore` ignores `*.fm2t`, `fm-tables.json`, and
 `external-tables/`. If `git status` shows your table, leave it out of the commit.
@@ -174,10 +189,10 @@ Other curves (the FM+ envelope, 1FEN, TONE, tune) are not in the file. They
 are the named constants at the top of `fm_common.py`. Change those, then
 re-render and re-assemble.
 
-## FM+STATIC later
+## FM+STATIC and super-wave
 
-Same hook, machine id 7, and extend `decide` with one more equality test.
-Do not widen it into "anything ≥ 5", or an unfinished id would skip the stock
-loops and play nothing. Screen order on manual page A-6, for when that engine
-is written: 1FRQ, 1FIN, 1ENV, 1FB, 2FRQ, 2VOL, TONE, TUNE. It reuses this
-state block and the same ratio list.
+FM+STATIC is type 5 and already shipped in the custom firmware. This repo
+does not implement it, and `decide` does not claim id 5. Super-wave machines
+are types 8 and above. Same rule as above: a new id is one more equality
+test, never a `>=` range. Screen order on manual page A-6, for reference
+only: 1FRQ, 1FIN, 1ENV, 1FB, 2FRQ, 2VOL, TONE, TUNE.

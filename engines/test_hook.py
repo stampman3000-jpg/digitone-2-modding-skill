@@ -1,4 +1,4 @@
-"""Machine-id hook: stock ids pass through, 5 and 6 do not.
+"""Machine-id hook: stock ids, shipped FM+STATIC (5), and super-wave pass through. 6 and 7 do not.
 
     python3 engines/test_hook.py
 """
@@ -26,12 +26,19 @@ def check(cond, msg):
 
 
 def policy():
-    for mid in (0, 1, 2, 3, 4, 7, 8, 127):
+    names = {
+        0: 'FM TONE', 1: 'WAVETONE', 2: 'FM DRUM', 3: 'SWARMER', 4: 'MIDI',
+        5: 'FM+STATIC (shipped)', 8: 'super-wave', 9: 'super-wave', 127: 'unused',
+    }
+    for mid, name in names.items():
         which, word = C.decide(mid, 99)
-        check(which == 0 and word == 99, f'machine {mid} ({C.STOCK_MACHINES.get(mid, "unused")}) is left alone')
+        check(which == 0 and word == 99, f'machine {mid} ({name}) is left alone')
     check(C.decide(4, 4) == (0, 4), 'MIDI keeps engine word 4 without us writing it')
-    check(C.decide(5, 99) == (5, 4), 'FM+DYNAMIC is rendered, then stock loops are skipped')
-    check(C.decide(6, 3) == (6, 4), 'FM+PARALLELL is rendered, then stock loops are skipped')
+    check(C.MACHINE_FM_STATIC == 5 and C.MACHINE_FM_DYNAMIC == 6
+          and C.MACHINE_FM_PARALLEL == 7 and C.MACHINE_SUPERWAVE == 8,
+          'type 5 static, 6 dynamic, 7 parallel, super-wave from 8')
+    check(C.decide(6, 99) == (6, 4), 'FM+DYNAMIC is rendered, then stock loops are skipped')
+    check(C.decide(7, 3) == (7, 4), 'FM+PARALLELL is rendered, then stock loops are skipped')
     for v in range(16):
         check(C.engine_word_addr(v) == 0x2554B8 + 564 * v + 436, f'engine-word address voice {v}')
         check(C.state_addr(v) == C.L2_STATE + v * C.STATE_BYTES, f'state address voice {v}')
@@ -74,7 +81,7 @@ def sim_hook():
 
     base = 0x20098000
     decide = build_decide()
-    for mid in (0, 1, 2, 3, 4, 5, 6, 7, 8):
+    for mid in (0, 1, 2, 3, 4, 5, 6, 7, 8, 9):
         blob = struct.pack('<III', mid, 99, 7)
         s = run(decide, {4: base, 5: base + 4, 3: base + 8}, blob, base)
         which, word = C.decide(mid, 99)

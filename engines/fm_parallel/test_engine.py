@@ -35,7 +35,8 @@ def ref_checks():
     check(len(PARAMS) == 8, '8 SYN parameters')
     check([p[0] for p in PARAMS] == ['1FRQ', '1ENV', '2FRQ', '2ENV', '3FRQ', '3ENV', 'TONE', 'TUNE'],
           'knob order matches the A-7 screen')
-    check(C.MACHINE_FM_PARALLEL == 6 and C.MACHINE_FM_PARALLEL not in C.STOCK_MACHINES, 'machine id 6 is new')
+    check(C.MACHINE_FM_PARALLEL == 7 and C.MACHINE_FM_PARALLEL not in C.STOCK_MACHINES, 'machine id 7 is new')
+    check(C.decide(5, 3) == (0, 3), 'does not take the shipped FM+STATIC id')
     ratios = t['ratios']
     check(any(abs(r - 0.5) < 1e-6 for r in ratios), 'listed ratios include 1/2')
     check(any(abs(r - 1.0) < 1e-6 for r in ratios), 'listed ratios include 1')

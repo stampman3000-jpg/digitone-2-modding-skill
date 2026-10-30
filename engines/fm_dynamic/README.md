@@ -1,7 +1,7 @@
 # FM+DYNAMIC
 
-A new Digitone II machine (id **5**). It does not replace FM TONE, WAVETONE,
-FM DRUM, SWARMER, or MIDI. How it plugs in: [`../INTERFACE.md`](../INTERFACE.md).
+A new Digitone II machine (id **6**). It does not replace FM TONE, WAVETONE,
+FM DRUM, SWARMER, MIDI, or the shipped FM+STATIC (id **5**). How it plugs in: [`../INTERFACE.md`](../INTERFACE.md).
 
 The sound follows Elektron’s *Monomachine User’s Manual* OS 1.32, appendix A
 page **A-7** (FM+DYNAMIC “FM+DYN”) and the FM+ envelope figure on page **A-6**.

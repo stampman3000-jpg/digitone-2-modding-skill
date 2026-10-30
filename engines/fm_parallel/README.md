@@ -1,7 +1,7 @@
 # FM+PARALLELL
 
-A new Digitone II machine (id **6**). It does not replace FM TONE, WAVETONE,
-FM DRUM, SWARMER, or MIDI. How it plugs in: [`../INTERFACE.md`](../INTERFACE.md).
+A new Digitone II machine (id **7**). It does not replace FM TONE, WAVETONE,
+FM DRUM, SWARMER, MIDI, or the shipped FM+STATIC (id **5**). How it plugs in: [`../INTERFACE.md`](../INTERFACE.md).
 
 The sound follows Elektron’s *Monomachine User’s Manual* OS 1.32, appendix A
 page **A-7** (FM+PARALLELL “FM+PAR”) and the FM+ envelope figure on page
@@ -20,39 +20,47 @@ knob, not one of these eight.
 | knob | name | range | what it does | manual |
 |---|---|---|---|---|
 | 1 | 1FRQ | 0–127 | Listed frequency of modulator 1. | A-7, “listed frequencies for Modulator 1–3” |
-| 2 | 1ENV | 0–127 | Level of modulator 1, FM+ envelope figure. | A-7; figure on A-6 |
+| 2 | 1ENV | 0–127 | Modulator 1 amount. Placeholder peaks around 72–83 and folds back after about 94. | A-7 |
 | 3 | 2FRQ | 0–127 | Listed frequency of modulator 2. | A-7 |
-| 4 | 2ENV | 0–127 | Level of modulator 2. | A-7; figure on A-6 |
-| 5 | 3FRQ | 0–127 | Listed frequency of modulator 3. | A-7 |
-| 6 | 3ENV | 0–127 | Level of modulator 3. | A-7; figure on A-6 |
-| 7 | TONE | 0–127 | Gain and a bit of extra harmonic on the summed modulators, before the carrier. Low is dark, high is bright. | A-7, “high settings introduce more high frequency harmonic contents” |
+| 4 | 2ENV | 0–127 | Modulator 2 amount, same shape as 1ENV until fitted. | A-7 |
+| 5 | 3FRQ | 0–127 | Listed frequency of modulator 3. This one dominates brightness. | A-7 |
+| 6 | 3ENV | 0–127 | Modulator 3 amount, same shape as 1ENV until fitted. | A-7 |
+| 7 | TONE | 0–127 | Brightness of the summed modulators, before the carrier. Placeholder flattens from about 100. | A-7, “high settings introduce more high frequency harmonic contents” |
 | 8 | TUNE | −64…+63 | Fine tune of the output. Stored as 0–127, center 64 = 0 cents. Knob 0 = −100 cents, knob 127 = +98.4 cents. | A-7, and parameter editing p. 1-25 |
 
-Envelope figure (A-6): 0 silence, 32 hold at half, 64 hold at full, above 64
-a decay from full that gets shorter toward 127.
+The manual’s envelope figure (A-6) draws holds and a decay. The standalone
+engine does not copy that drawing. ENV amount is the fold-back placeholder
+in `fm_par_curves.h`, to be replaced by ear.
 
-## Default ratio list
+## Standalone engine
 
-The manual does not print the 128 entries. The screens show ratios such as
-1/2, 1, and 2, so the default is an original list of FM-useful fractions,
-four knobs each, with those three in it. Replace the whole list from a file
-you make locally (INTERFACE.md). Do not commit that file.
+`fm_par.c` and `fm_par_ref.py` are the DSP. Sine is `sinf`. There is no
+wavetable and no ratio file. Every knob is one small table in
+[`fm_par_curves.h`](fm_par_curves.h). That header is the file to edit when
+fitting by ear. Do not commit measured sweeps.
 
-| knobs | ratio | knobs | ratio | knobs | ratio | knobs | ratio |
-|---|---|---|---|---|---|---|---|
-| 0–3 | 1/8 | 32–35 | 2/3 | 64–67 | 7/4 | 96–99 | 7 |
-| 4–7 | 1/6 | 36–39 | 3/4 | 68–71 | 2 | 100–103 | 8 |
-| 8–11 | 1/5 | 40–43 | 4/5 | 72–75 | 5/2 | 104–107 | 9 |
-| 12–15 | 1/4 | 44–47 | 1 | 76–79 | 3 | 108–111 | 10 |
-| 16–19 | 1/3 | 48–51 | 5/4 | 80–83 | 7/2 | 112–115 | 12 |
-| 20–23 | 2/5 | 52–55 | 4/3 | 84–87 | 4 | 116–119 | 16 |
-| 24–27 | 1/2 | 56–59 | 3/2 | 88–91 | 5 | 120–123 | 20 |
-| 28–31 | 3/5 | 60–63 | 5/3 | 92–95 | 6 | 124–127 | 24 |
+The placeholder shapes, not measured heights:
 
-## Cost
+- **1FRQ, 2FRQ, 3FRQ** — 24 musical ratios, the same simple list as FM+STATIC: 1/64, 1/32, 1/16, 3/32, 1/8, 5/32, 3/16, 1/4, 5/16, 3/8, 7/16, 1/2, 5/8, 3/4, 7/8, 1, 5/4, 3/2, 7/4, 2, 5/2, 3, 7/2, 4. Knob `k` selects step `(k * 24) / 128`. Each knob has its own copy of the list.
+- **3FRQ** dominates brightness. The mix is `fm_par_mod_w` (third weight largest).
+- **1ENV, 2ENV, 3ENV** — amount, not a straight ramp. The placeholder peaks in the 72–83 band and folds back above about 94.
+- **TONE** — one-pole brightness on the summed modulators. It flattens from about knob 100. Not a voice filter.
+- **TUNE** — smooth cents, symmetric about knob 64. Knob 0 is −100 cents, knob 127 is +98.4 cents.
+- **Loudness** — the carrier amplitude is only the host `out_gain`. Knobs do not scale it, so a sweep stays about the same level.
 
-Measured on the SHARC simulator (instruction counts, not stall cycles). One
-sounding voice, 32 samples:
+State is **52 bytes** per voice (16 voices = 832). Layout is in `fm_par.h`.
+
+```bash
+python3 engines/fm_parallel/test_fm_par.py
+```
+
+The SHARC sketch (`kernel.py`, `reference.py`) is separate. Its swappable
+ratio stand-in is still the list in `fm_common.py`, not these tables.
+
+## Cost (SHARC sketch)
+
+Measured on the SHARC simulator (instruction counts, not stall cycles). This
+is `kernel.py`, not the 52-byte C engine. One sounding voice, 32 samples:
 
 | | instructions |
 |---|---|
@@ -83,9 +91,13 @@ display). Amp open (ATK 0, HOLD 127, DEC 127, REL 0), filter not closing the
 sound, distortion 0, delay send 0. Record a few seconds and play it beside
 the WAV.
 
-Decay time and brightness that you want to nudge live in
-`engines/fm_common.py` (`ENV_TAU_FAST`, `BETA`, `TONE_G0`, `TONE_H`). The
-listed ratios and the sine are the swappable file:
+What to nudge on the standalone engine is `fm_par_curves.h`: one table per
+knob, plus `fm_par_mod_w` and `FM_PAR_BETA`. The heights are placeholders.
+Leave measured sweeps out of git.
+
+The SHARC sketch still has its own constants in `engines/fm_common.py`
+(`ENV_TAU_FAST`, `BETA`, `TONE_G0`, `TONE_H`) and an optional local table
+file. That file is not the curves header:
 
 ```bash
 python3 engines/fm_parallel/reference.py --tables /path/to/mine.json

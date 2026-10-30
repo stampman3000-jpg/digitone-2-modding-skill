@@ -39,15 +39,18 @@ STOCK_MACHINES = {
     3: 'SWARMER',
     4: 'MIDI',
 }
-MACHINE_FM_DYNAMIC = 5
-MACHINE_FM_PARALLEL = 6
-MACHINE_FM_STATIC = 7       # reserved for the FM+STATIC engine built elsewhere
-MACHINE_SUPERWAVE = 8       # reserved
+# Custom firmware on top of stock 0..4. Type 5 is FM+STATIC and already
+# shipped: this repo must not render it. Super-wave is 8 and above.
+MACHINE_FM_STATIC = 5
+MACHINE_FM_DYNAMIC = 6
+MACHINE_FM_PARALLEL = 7
+MACHINE_SUPERWAVE = 8
 
 # DSP "skip the stock oscillator loops" sentinel. This is the same numeric
 # value as the MIDI machine, but it is NOT a claim on the MIDI machine: we
 # write it only into the engine-word of a voice whose machine id is already
-# 5 or 6, after our own render. Stock voices are not touched. See INTERFACE.md.
+# 6 or 7, after our own render. Stock voices and the shipped FM+STATIC
+# (type 5) are not touched. See INTERFACE.md.
 ENGINE_WORD_SKIP_STOCK = 4
 
 ENV_TABLE = 'DN2_FM_TABLES'
@@ -449,11 +452,11 @@ def voice_buf_addr(voice):
 def decide(machine, engine_word):
     """Pure policy the SHARC hook implements.
 
-    Stock ids 0..4, and any id we do not own (7 and 8 until those engines
-    exist), pass through with the engine word unchanged. Ids 5 and 6 are
-    ours: the hook will render them and then store ENGINE_WORD_SKIP_STOCK
-    so the stock oscillator loops do not also render that voice.
-    Returns (which, engine_word) where which is 0 passthrough, 5, or 6.
+    Stock ids 0..4, the shipped FM+STATIC (5), super-wave (8 and above),
+    and any other id we do not own pass through with the engine word
+    unchanged. Ids 6 and 7 are ours: the hook renders them and then stores
+    ENGINE_WORD_SKIP_STOCK so the stock oscillator loops do not also render
+    that voice. Returns (which, engine_word) where which is 0, 6, or 7.
     """
     machine = int(machine)
     if machine == MACHINE_FM_DYNAMIC or machine == MACHINE_FM_PARALLEL:

@@ -35,7 +35,8 @@ def ref_checks():
     check(len(PARAMS) == 8, '8 SYN parameters')
     check([p[0] for p in PARAMS] == ['1FRQ', '1FEN', '1VOL', '1VEN', '2FRQ', '2ENV', '2FB', 'TUNE'],
           'knob order matches the A-7 screen')
-    check(C.MACHINE_FM_DYNAMIC == 5 and C.MACHINE_FM_DYNAMIC not in C.STOCK_MACHINES, 'machine id 5 is new')
+    check(C.MACHINE_FM_DYNAMIC == 6 and C.MACHINE_FM_DYNAMIC not in C.STOCK_MACHINES, 'machine id 6 is new')
+    check(C.MACHINE_FM_STATIC == 5 and C.decide(5, 3) == (0, 3), 'type 5 FM+STATIC is shipped and not rendered here')
     check(t['start'][0] == 0 and abs(t['start'][32] - 0.5) < 1e-6 and t['start'][64] == 1, 'envelope holds 0, 0.5, 1')
     check(t['decay'][0] == 1 and t['decay'][64] == 1, 'knob ≤ 64 does not decay')
     h127 = C.samples_to_half(t['decay'][127])

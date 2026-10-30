@@ -1,7 +1,8 @@
 """Machine-id hook for the new engines.
 
 Stock Digitone machines stay on ids 0–4 (FM TONE, WAVETONE, FM DRUM, SWARMER,
-MIDI). FM+DYNAMIC is 5 and FM+PARALLELL is 6. The SHARC routine below only
+MIDI). FM+STATIC is already shipped as type 5 and is not ours. FM+DYNAMIC is
+6 and FM+PARALLELL is 7. The SHARC routine below only
 rewrites the engine word for those two ids, and only to the skip-stock
 sentinel (the value 4). It does not write the voice's machine id and it does
 not touch the stock dispatch table.
@@ -20,7 +21,7 @@ def build_decide():
     """I4 = machine id word, I5 = engine-word address, I3 = flag word.
 
     flag 0 = pass the voice to the stock dispatch (replay the displaced jump).
-    flag 5 or 6 = we own it; engine word becomes 4.
+    flag 6 or 7 = we own it; engine word becomes 4. Type 5 is not ours.
     """
     k = fxdsl.Kernel('fm_decide', inputs={'mach': 'I4', 'ew': 'I5', 'flag': 'I3'})
     m = k.var('i', k.ld(k['mach'], 0, 'i'))
